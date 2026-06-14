@@ -1,0 +1,206 @@
+# =============================================================================
+# scene.txt — Configuração de cena | Grau B Computação Gráfica Unisinos 2026/1
+# =============================================================================
+# Formato:
+#   Blocos delimitados por palavra-chave e "end"
+#   Comentários com #
+#   Caminhos relativos ao executável
+# =============================================================================
+
+# --- Câmera inicial ---
+camera
+    position   0.0  2.5  -12.0
+    yaw        90.0
+    pitch      -8.0
+    fov        60.0
+    near       0.1
+    far        300.0
+end
+
+# --- Fonte de luz ---
+light
+    position   4.0  10.0  4.0
+    color      1.0  0.95  0.85
+    intensity  1.2
+end
+
+# =============================================================================
+# OBJETOS DA CENA
+# Ajuste os caminhos para os .obj disponíveis no repositório da disciplina.
+# Os modelos sugeridos estão em ../assets/Modelos3D/
+# =============================================================================
+
+# --- Chão (cubo achatado) ---
+object
+    name      chao
+    file      ../assets/Modelos3D/cube.obj
+    position   0.0  -0.6  0.0
+    rotation   0.0  0.0  0.0
+    scale     24.0  0.2  24.0
+    color      0.35  0.30  0.25
+end
+
+# --- Parede do fundo ---
+object
+    name      parede_fundo
+    file      ../assets/Modelos3D/cube.obj
+    position   0.0  4.0  6.0
+    scale     26.0  10.0  0.3
+    color      0.55  0.50  0.45
+end
+
+# --- Parede esquerda ---
+object
+    name      parede_esq
+    file      ../assets/Modelos3D/cube.obj
+    position  -12.0  4.0  -1.0
+    scale      0.3  10.0  16.0
+    color      0.50  0.48  0.44
+end
+
+# --- Parede direita ---
+object
+    name      parede_dir
+    file      ../assets/Modelos3D/cube.obj
+    position  12.0  4.0  -1.0
+    scale      0.3  10.0  16.0
+    color      0.50  0.48  0.44
+end
+
+# --- Pedestal esquerdo ---
+object
+    name      pedestal_esq
+    file      ../assets/Modelos3D/cube.obj
+    position  -4.0  0.25  0.0
+    scale      1.2  0.5  1.2
+    color      0.45  0.40  0.35
+end
+
+# --- Pedestal central ---
+object
+    name      pedestal_cen
+    file      ../assets/Modelos3D/cube.obj
+    position   0.0  0.25  0.0
+    scale      1.2  0.5  1.2
+    color      0.45  0.40  0.35
+end
+
+# --- Pedestal direito ---
+object
+    name      pedestal_dir
+    file      ../assets/Modelos3D/cube.obj
+    position   4.0  0.25  0.0
+    scale      1.2  0.5  1.2
+    color      0.45  0.40  0.35
+end
+
+# --- Suzanne vermelha (esquerda) ---
+object
+    name      suzanne_vermelha
+    file      ../assets/Modelos3D/SuzanneSubdiv1.obj
+    position  -4.0  1.5  0.0
+    rotation   0.0  30.0  0.0
+    scale      1.0  1.0  1.0
+    color      0.85  0.20  0.20
+end
+
+# --- Suzanne verde (centro) ---
+object
+    name      suzanne_verde
+    file      ../assets/Modelos3D/SuzanneSubdiv1.obj
+    position   0.0  1.5  0.0
+    rotation   0.0  0.0  0.0
+    scale      1.2  1.2  1.2
+    color      0.20  0.80  0.25
+end
+
+# --- Suzanne azul (direita) ---
+object
+    name      suzanne_azul
+    file      ../assets/Modelos3D/SuzanneSubdiv1.obj
+    position   4.0  1.5  0.0
+    rotation   0.0  -30.0  0.0
+    scale      1.0  1.0  1.0
+    color      0.20  0.40  0.90
+end
+
+# --- Coluna esquerda fundo ---
+object
+    name      coluna_esq
+    file      ../assets/Modelos3D/cube.obj
+    position  -9.0  4.0  5.5
+    scale      0.7  9.0  0.7
+    color      0.60  0.55  0.50
+end
+
+# --- Coluna direita fundo ---
+object
+    name      coluna_dir
+    file      ../assets/Modelos3D/cube.obj
+    position   9.0  4.0  5.5
+    scale      0.7  9.0  0.7
+    color      0.60  0.55  0.50
+end
+
+# --- Decorativo fundo esquerdo ---
+object
+    name      deco_esq
+    file      ../assets/Modelos3D/cube.obj
+    position  -7.0  0.5  4.0
+    rotation   0.0  45.0  0.0
+    scale      0.8  1.2  0.8
+    color      0.70  0.60  0.30
+end
+
+# --- Decorativo fundo direito ---
+object
+    name      deco_dir
+    file      ../assets/Modelos3D/cube.obj
+    position   7.0  0.5  4.0
+    rotation   0.0  -45.0  0.0
+    scale      0.8  1.2  0.8
+    color      0.70  0.60  0.30
+end
+
+# --- Suzanne pequena fundo esquerdo ---
+object
+    name      suz_fundo_esq
+    file      ../assets/Modelos3D/SuzanneSubdiv1.obj
+    position  -7.0  1.9  4.0
+    rotation   0.0  90.0  0.0
+    scale      0.5  0.5  0.5
+    color      0.90  0.70  0.10
+end
+
+# --- Suzanne pequena fundo direito ---
+object
+    name      suz_fundo_dir
+    file      ../assets/Modelos3D/SuzanneSubdiv1.obj
+    position   7.0  1.9  4.0
+    rotation   0.0  -90.0  0.0
+    scale      0.5  0.5  0.5
+    color      0.90  0.70  0.10
+end
+
+# =============================================================================
+# OBJETO ANIMADO — Suzanne orbitando por curva Catmull-Rom
+# anim_speed: segmentos percorridos por segundo (0.5 = lento, 2.0 = rápido)
+# anim_point: pontos de controle (mínimo 2, recomendado 6+)
+# A curva é fechada automaticamente (o último ponto volta ao primeiro).
+# =============================================================================
+object
+    name        suzanne_orbital
+    file        ../assets/Modelos3D/SuzanneSubdiv1.obj
+    position    0.0  4.0  0.0
+    scale       0.6  0.6  0.6
+    color       1.0  0.85  0.0
+    anim_speed  0.35
+    anim_point   5.5  4.0   0.0
+    anim_point   3.9  4.8   3.9
+    anim_point   0.0  5.5   5.5
+    anim_point  -3.9  4.8   3.9
+    anim_point  -5.5  4.0   0.0
+    anim_point  -3.9  3.2  -3.9
+    anim_point   0.0  2.5  -5.5
+    anim_point   3.9  3.2  -3.9
+end
