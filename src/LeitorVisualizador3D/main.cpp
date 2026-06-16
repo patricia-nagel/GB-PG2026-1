@@ -15,6 +15,8 @@
  *   + Material lido do .mtl      (parseMTL() em LoadOBJ.h)
  *   + Animação Catmull-Rom       (catmullRomPoint() aqui)
  *   + Câmera/luz configuráveis   (pelo scene.txt)
+ *   + Skybox com cubemap         (setupSkyboxVAO, loadCubemap)
+ *   + Reflexão de ambiente       (mix(Phong, envColor, reflectivity))
  *
  * MANTIDO DO GRAU A:
  *   Câmera FPS (WASD+mouse), seleção TAB, rotação X/Y/Z,
@@ -81,6 +83,7 @@ void main()
 )glsl";
 
 // Fragment shader: igual ao da professora + especular + fallback sem textura
+// +SKYBOX: adicionado samplerCube, reflectivity e mix(Phong, envColor, reflectivity)
 const GLchar* fragmentShaderSource = R"glsl(
 #version 450
 in vec4 finalColor;
@@ -102,6 +105,10 @@ uniform vec3 lightColor;
 
 // Posição da câmera
 uniform vec3 cameraPos;
+
+// +SKYBOX: reflexão de ambiente
+uniform samplerCube skybox;        // cubemap do ambiente (texture unit 1)
+uniform float       reflectivity;  // 0 = só Phong, 1 = espelho perfeito
 
 out vec4 color;
 
@@ -127,8 +134,44 @@ void main()
                    ? texture(texBuffer, texcoord)
                    : finalColor;
 
-    color = (vec4(ambient,1.0) + vec4(diffuse,1.0)) * baseColor
-            + vec4(specular, 0.0);
+    vec4 phongColor = (vec4(ambient,1.0) + vec4(diffuse,1.0)) * baseColor
+                    + vec4(specular, 0.0);
+
+    // +SKYBOX: reflexão de ambiente — vetor I (câmera→fragmento) refletido na normal
+    vec3 I        = normalize(fragPos - cameraPos);
+    vec3 Renv     = reflect(I, N);
+    vec3 envColor = texture(skybox, Renv).rgb;
+
+    // mix(a, b, t): interpola entre Phong (t=0) e espelho perfeito (t=1)
+    color = mix(phongColor, vec4(envColor, 1.0), reflectivity);
+}
+)glsl";
+
+// +SKYBOX: shaders do skybox (do ExercicioSkybox)
+// O skybox usa apenas a direção do fragmento (vec3) para amostrar o cubemap.
+// A view é passada SEM translação para que o céu pareça infinitamente distante.
+const GLchar* skyboxVertSrc = R"glsl(
+#version 450
+layout (location = 0) in vec3 position;
+out vec3 TexCoords;
+uniform mat4 projection;
+uniform mat4 view;
+void main()
+{
+    TexCoords   = position;
+    vec4 pos    = projection * view * vec4(position, 1.0);
+    gl_Position = pos.xyww; // truque: z/w == 1 = sempre no far plane
+}
+)glsl";
+
+const GLchar* skyboxFragSrc = R"glsl(
+#version 450
+in  vec3 TexCoords;
+out vec4 FragColor;
+uniform samplerCube skybox;
+void main()
+{
+    FragColor = texture(skybox, TexCoords);
 }
 )glsl";
 
@@ -154,6 +197,10 @@ int  editComponent = 1;
 bool materialMode  = false;
 
 vector<Mesh> meshes;
+
+// +SKYBOX: refletividade do ambiente (0 = só Phong, 1 = espelho perfeito)
+// Ajustável em tempo real com + e - fora do modo M
+float reflectivity = 0.0f;
 
 // =============================================================================
 // +GB: catmullRomPoint() — posição na curva Catmull-Rom para parâmetro t
@@ -188,11 +235,13 @@ glm::vec3 catmullRomPoint(const vector<glm::vec3>& pts, float t)
 // =============================================================================
 // PROTÓTIPOS
 // =============================================================================
-int  setupShader(const GLchar* vs, const GLchar* fs);
-void printMaterial(int idx);
-void key_callback(GLFWwindow*, int, int, int, int);
-void mouse_callback(GLFWwindow*, double, double);
-void scroll_callback(GLFWwindow*, double, double);
+int    setupShader(const GLchar* vs, const GLchar* fs);
+GLuint setupSkyboxVAO(); // +SKYBOX
+GLuint loadCubemap(vector<string> faces); // +SKYBOX
+void   printMaterial(int idx);
+void   key_callback(GLFWwindow*, int, int, int, int);
+void   mouse_callback(GLFWwindow*, double, double);
+void   scroll_callback(GLFWwindow*, double, double);
 
 // =============================================================================
 // MAIN
@@ -230,8 +279,25 @@ int main(int argc, char* argv[])
     glUseProgram(shaderID);
     glEnable(GL_DEPTH_TEST);
 
-    // Textura na unit 0
+    // Textura 2D na unit 0; cubemap na unit 1
     glUniform1i(glGetUniformLocation(shaderID, "texBuffer"), 0);
+    glUniform1i(glGetUniformLocation(shaderID, "skybox"),    1); // +SKYBOX
+
+    // +SKYBOX: compila shader e inicializa skybox
+    GLuint skyboxShader = setupShader(skyboxVertSrc, skyboxFragSrc);
+    GLuint skyboxVAO    = setupSkyboxVAO();
+    vector<string> faces = {
+        "../assets/skybox/right.jpg",
+        "../assets/skybox/left.jpg",
+        "../assets/skybox/top.jpg",
+        "../assets/skybox/bottom.jpg",
+        "../assets/skybox/front.jpg",
+        "../assets/skybox/back.jpg"
+    };
+    GLuint cubemapTex = loadCubemap(faces);
+    glUseProgram(skyboxShader);
+    glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 0);
+    glUseProgram(shaderID);
 
     // ==========================================================================
     // +GB: Carrega cena do arquivo
@@ -303,7 +369,8 @@ int main(int argc, char* argv[])
 
     cout << "\n=== " << meshes.size() << " objeto(s) na cena ===\n";
     cout << "TAB=selecionar | M=material | B=wireframe | O=projecao\n";
-    cout << "X/Y/Z=rotacao  | Setas+PgUp/Dn=translacao | R/F=escala\n\n";
+    cout << "X/Y/Z=rotacao  | Setas+PgUp/Dn=translacao | R/F=escala\n";
+    cout << "+/-=reflexao do skybox (fora do modo M)\n\n";
     printMaterial(selectedObject);
 
     // ==========================================================================
@@ -389,6 +456,11 @@ int main(int argc, char* argv[])
             : glm::ortho(-5.0f, 5.0f, -5.0f*(float)HEIGHT/WIDTH, 5.0f*(float)HEIGHT/WIDTH, 0.1f, 300.0f);
         glUniformMatrix4fv(glGetUniformLocation(shaderID,"projection"),1,GL_FALSE,glm::value_ptr(projection));
 
+        // +SKYBOX: cubemap na unit 1, reflectivity atual
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
+        glUniform1f(glGetUniformLocation(shaderID,"reflectivity"), reflectivity);
+
         // ---- Draw loop ----
         for (int i = 0; i < (int)meshes.size(); i++)
         {
@@ -444,11 +516,35 @@ int main(int argc, char* argv[])
         }
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        // +SKYBOX: desenha o skybox por último para máxima performance
+        // glDepthFunc(GL_LEQUAL): o skybox passa no Z-test quando z == far plane
+        // (o truque pos.xyww no vertex shader garante z/w == 1 = far plane)
+        glDepthFunc(GL_LEQUAL);
+        glUseProgram(skyboxShader);
+
+        // Remove a translação da view matrix: o skybox parece infinitamente distante
+        glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(view));
+        glUniformMatrix4fv(glGetUniformLocation(skyboxShader,"view"),       1,GL_FALSE,glm::value_ptr(viewNoTranslation));
+        glUniformMatrix4fv(glGetUniformLocation(skyboxShader,"projection"), 1,GL_FALSE,glm::value_ptr(projection));
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
+        glBindVertexArray(skyboxVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
+
+        glDepthFunc(GL_LESS);    // restaura o comportamento padrão do Z-buffer
+        glUseProgram(shaderID);  // restaura o shader dos objetos para o próximo frame
+
         glfwSwapBuffers(window);
     }
 
     for (auto& m : meshes) if (m.VAO) glDeleteVertexArrays(1, &m.VAO);
+    glDeleteVertexArrays(1, &skyboxVAO); // +SKYBOX
+    glDeleteTextures(1, &cubemapTex);    // +SKYBOX
     glDeleteProgram(shaderID);
+    glDeleteProgram(skyboxShader);       // +SKYBOX
     glfwTerminate();
     return 0;
 }
@@ -536,6 +632,20 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         return;
     }
 
+    // +SKYBOX: fora do modo material, + e - ajustam a reflectividade do cubemap
+    if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD)
+    {
+        reflectivity = glm::min(reflectivity + 0.05f, 1.0f);
+        cout << "[Reflexao: " << reflectivity << "]\n";
+        return;
+    }
+    if (key == GLFW_KEY_MINUS || key == GLFW_KEY_KP_SUBTRACT)
+    {
+        reflectivity = glm::max(reflectivity - 0.05f, 0.0f);
+        cout << "[Reflexao: " << reflectivity << "]\n";
+        return;
+    }
+
     // Rotação
     if (key == GLFW_KEY_X) sel.rotation.x += 5.0f;
     if (key == GLFW_KEY_Y) sel.rotation.y += 5.0f;
@@ -603,4 +713,85 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     camera.movementSpeed = glm::clamp(camera.movementSpeed + (float)yoffset * 0.5f, 1.0f, 20.0f);
+}
+
+// =============================================================================
+// +SKYBOX: setupSkyboxVAO() — monta o VAO do cubo unitário do skybox
+// =============================================================================
+// Cubo de 36 vértices (6 faces × 2 triângulos × 3 vértices).
+// Apenas posição (location 0), stride = 3 floats.
+GLuint setupSkyboxVAO()
+{
+    float skyboxVertices[] = {
+        // Back
+        -1.f, 1.f,-1.f, -1.f,-1.f,-1.f,  1.f,-1.f,-1.f,
+         1.f,-1.f,-1.f,  1.f, 1.f,-1.f, -1.f, 1.f,-1.f,
+        // Left
+        -1.f,-1.f, 1.f, -1.f,-1.f,-1.f, -1.f, 1.f,-1.f,
+        -1.f, 1.f,-1.f, -1.f, 1.f, 1.f, -1.f,-1.f, 1.f,
+        // Right
+         1.f,-1.f,-1.f,  1.f,-1.f, 1.f,  1.f, 1.f, 1.f,
+         1.f, 1.f, 1.f,  1.f, 1.f,-1.f,  1.f,-1.f,-1.f,
+        // Front
+        -1.f,-1.f, 1.f, -1.f, 1.f, 1.f,  1.f, 1.f, 1.f,
+         1.f, 1.f, 1.f,  1.f,-1.f, 1.f, -1.f,-1.f, 1.f,
+        // Top
+        -1.f, 1.f,-1.f,  1.f, 1.f,-1.f,  1.f, 1.f, 1.f,
+         1.f, 1.f, 1.f, -1.f, 1.f, 1.f, -1.f, 1.f,-1.f,
+        // Bottom
+        -1.f,-1.f,-1.f, -1.f,-1.f, 1.f,  1.f,-1.f,-1.f,
+         1.f,-1.f,-1.f, -1.f,-1.f, 1.f,  1.f,-1.f, 1.f
+    };
+    GLuint VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    return VAO;
+}
+
+// =============================================================================
+// +SKYBOX: loadCubemap() — carrega 6 imagens nas faces do cubemap
+// =============================================================================
+// Ordem esperada: right, left, top, bottom, front, back
+GLuint loadCubemap(vector<string> faces)
+{
+    GLuint texID;
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texID);
+
+    // Cubemaps não precisam de flip vertical (ao contrário de texturas 2D)
+    stbi_set_flip_vertically_on_load(false);
+
+    int w, h, nChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char* data = stbi_load(faces[i].c_str(), &w, &h, &nChannels, 0);
+        if (data)
+        {
+            GLenum format = (nChannels == 4) ? GL_RGBA : GL_RGB;
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                         0, format, w, h, 0, format, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+            cout << "[CUBEMAP] " << faces[i] << "\n";
+        }
+        else
+        {
+            cerr << "[CUBEMAP] Falha: " << faces[i] << "\n";
+            stbi_image_free(data);
+        }
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return texID;
 }
