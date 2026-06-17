@@ -156,7 +156,7 @@ bool materialMode  = false;
 vector<Mesh> meshes;
 
 // =============================================================================
-// +GB: catmullRomPoint() — posição na curva Catmull-Rom para parâmetro t
+// catmullRomPoint() — posição na curva Catmull-Rom para parâmetro t
 // =============================================================================
 glm::vec3 catmullRomPoint(const vector<glm::vec3>& pts, float t)
 {
@@ -290,8 +290,10 @@ int main(int argc, char* argv[])
     // ---- Luz ----
     glm::vec3 lightPos, lightColor;
     if (!scene.lights.empty()) {
-        lightPos   = scene.lights[0].position;
-        lightColor = scene.lights[0].color * scene.lights[0].intensity;
+        for(auto &l: scene.lights) {
+            lightPos   = l.position;
+            lightColor = l.color * l.intensity;
+        }
     } else {
         lightPos   = glm::vec3(-0.5f, 5.0f, 0.0f); // igual à professora
         lightColor = glm::vec3(1.0f);
@@ -366,7 +368,7 @@ int main(int argc, char* argv[])
             if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) sel.position.z -= ts;
         }
 
-        // +GB: Animação Catmull-Rom
+        // Animação Catmull-Rom
         for (auto& m : meshes)
             if (m.animSpeed > 0.0f && m.animPath.size() >= 2)
             {
@@ -407,7 +409,7 @@ int main(int argc, char* argv[])
             glUniform1f(glGetUniformLocation(shaderID,"ks"), ksV);
             glUniform1f(glGetUniformLocation(shaderID,"q"),  meshes[i].shininess);
 
-            // +GB: textura
+            // textura
             if (meshes[i].texID > 0)
             {
                 glActiveTexture(GL_TEXTURE0);
@@ -567,24 +569,32 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         cout << "[Objeto " << selectedObject << " resetado]\n";
     }
 
-    // +GB: Ctrl+A pausa/retoma animação
-    if (key == GLFW_KEY_A && (mode & GLFW_MOD_CONTROL))
+    // Ctrl+P pausa/retoma animação
+    if (key == GLFW_KEY_P && (mode & GLFW_MOD_CONTROL))
     {
-        if (!sel.animPath.empty())
+        for (auto& m : meshes)
         {
-            if (sel.animSpeed > 0.0f)
+            if (!m.animPath.empty())
             {
-                sel.rotation.z = sel.animSpeed; // guarda velocidade
-                sel.animSpeed  = 0.0f;
-                cout << "[Animacao PAUSADA]\n";
-            }
-            else
-            {
-                sel.animSpeed  = sel.rotation.z > 0.0f ? sel.rotation.z : 0.5f;
-                sel.rotation.z = 0.0f;
-                cout << "[Animacao RETOMADA]\n";
+                if (m.animSpeed > 0.0f)
+                {
+                    m.rotation.z = m.animSpeed; // guarda velocidade
+                    m.animSpeed  = 0.0f;
+                    cout << "[Animacao PAUSADA]\n";
+                }
+                else
+                {
+                    m.animSpeed  = m.rotation.z > 0.0f ? m.rotation.z : 0.5f;
+                    m.rotation.z = 0.0f;
+                    cout << "[Animacao RETOMADA]\n";
+                }
             }
         }
+    }
+
+    if (key == GLFW_KEY_C)
+    {
+        cout << "X = " << camera.position.x << " Y = " << camera.position.y << " Z = " << camera.position.z << endl;
     }
 }
 
