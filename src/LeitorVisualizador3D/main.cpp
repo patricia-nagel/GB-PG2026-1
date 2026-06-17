@@ -3,13 +3,13 @@
  * main.cpp — Visualizador 3D | Grau B
  * Computação Gráfica — Unisinos 2026/1
  * =============================================================================
- * Baseado no Hello3D/ExercicioOBJ da Profa. Rossana Baptista Queiroz.
+ * Baseado nos exemplos da Profa. Rossana Baptista Queiroz.
  *
  * Layout VBO: pos(3) + cor(3) + normal(3) + texcoord(2) = 11 floats/vértice
  * locations:   0        1        2            3
  * (idêntico ao loadSimpleOBJ() da professora)
  *
- * ADIÇÕES DO GRAU B em relação ao Grau A [marcadas com +GB]:
+ * ADIÇÕES DO GRAU B em relação ao Grau A:
  *   + Arquivo de cena scene.txt  (SceneConfig.h)
  *   + Texturas via stb_image     (loadTexture() em LoadOBJ.h)
  *   + Material lido do .mtl      (parseMTL() em LoadOBJ.h)
