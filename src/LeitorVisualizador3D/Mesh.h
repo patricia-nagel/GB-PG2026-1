@@ -37,10 +37,10 @@ struct Mesh
     float     shininess = 32.0f;
     glm::vec3 color     = glm::vec3(1.0f, 0.5f, 0.2f);
 
-    // +GB: ID da textura (0 = sem textura, usa só a cor acima)
+    // ID da textura (0 = sem textura, usa só a cor acima)
     GLuint texID = 0;
 
-    // +GB: Animação Catmull-Rom
+    // Animação Catmull-Rom
     // Se animPath tiver >= 2 pontos, o objeto se move pela curva no game loop.
     std::vector<glm::vec3> animPath;
     float animT     = 0.0f;  // parâmetro acumulado [0, N)

@@ -171,14 +171,14 @@ bool loadSimpleOBJ(const std::string& filePath, Mesh& outMesh)
             ssline >> normal.x >> normal.y >> normal.z;
             normals.push_back(normal);
         }
-        // +GB: carrega o MTL referenciado
+        // carrega o MTL referenciado
         else if (word == "mtllib")
         {
             std::string mtlName; ssline >> mtlName;
             if (!mtlName.empty() && mtlName.back() == '\r') mtlName.pop_back();
             materials = parseMTL(baseDir + mtlName, baseDir);
         }
-        // +GB: troca o material ativo (atualiza a cor usada no VBO)
+        // troca o material ativo (atualiza a cor usada no VBO)
         else if (word == "usemtl")
         {
             ssline >> curMaterial;
@@ -263,7 +263,7 @@ bool loadSimpleOBJ(const std::string& filePath, Mesh& outMesh)
     outMesh.nVertices = (int)(vBuffer.size() / 11);
     outMesh.name      = filePath;
 
-    // +GB: aplica material do MTL na Mesh
+    // aplica material do MTL na Mesh
     if (!curMaterial.empty() && materials.count(curMaterial))
     {
         const Mesh& mat = materials.at(curMaterial);
