@@ -190,7 +190,7 @@ end
 # =============================================================================
 object
     name        suzanne_orbital
-    file        ../assets/Modelos3D/SuzanneSubdiv1.obj
+    file        ../assets/Modelos3D/cat.obj
     position    0.0  4.0  0.0
     scale       0.6  0.6  0.6
     color       1.0  0.85  0.0

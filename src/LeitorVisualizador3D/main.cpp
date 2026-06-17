@@ -99,9 +99,11 @@ uniform float ka;
 uniform float kd;
 uniform float ks, q;
 
-// Propriedades da fonte de luz
-uniform vec3 lightPos;
-uniform vec3 lightColor;
+// Múltiplas fontes de luz
+#define MAX_LIGHTS 4
+uniform vec3 lightPos[MAX_LIGHTS];
+uniform vec3 lightColor[MAX_LIGHTS];
+uniform int  numLights;
 
 // Posição da câmera
 uniform vec3 cameraPos;
@@ -114,28 +116,31 @@ out vec4 color;
 
 void main()
 {
-    // Parcela da luz ambiente
-    vec3 ambient = ka * lightColor;
-
-    // Parcela da reflexão difusa
-    vec3 N    = normalize(scaledNormal);
-    vec3 L    = normalize(lightPos - fragPos);
-    float diff = max(dot(N, L), 0.0);
-    vec3 diffuse = kd * diff * lightColor;
-
-    // Parcela da reflexão especular (Phong)
-    vec3 V    = normalize(cameraPos - fragPos);
-    vec3 R    = reflect(-L, N);
-    float spec = pow(max(dot(V, R), 0.0), q);
-    vec3 specular = ks * spec * lightColor;
+    vec3 N = normalize(scaledNormal);
+    vec3 V = normalize(cameraPos - fragPos);
 
     // Cor base: textura ou cor do vértice (finalColor)
     vec4 baseColor = (hasTexture == 1)
                    ? texture(texBuffer, texcoord)
                    : finalColor;
 
-    vec4 phongColor = (vec4(ambient,1.0) + vec4(diffuse,1.0)) * baseColor
+    // Acumula contribuição de cada fonte de luz
+    vec4 phongColor = vec4(0.0);
+    for (int i = 0; i < numLights; i++)
+    {
+        vec3 ambient  = ka * lightColor[i];
+
+        vec3 L        = normalize(lightPos[i] - fragPos);
+        float diff    = max(dot(N, L), 0.0);
+        vec3 diffuse  = kd * diff * lightColor[i];
+
+        vec3 R        = reflect(-L, N);
+        float spec    = pow(max(dot(V, R), 0.0), q);
+        vec3 specular = ks * spec * lightColor[i];
+
+        phongColor += (vec4(ambient,1.0) + vec4(diffuse,1.0)) * baseColor
                     + vec4(specular, 0.0);
+    }
 
     // +SKYBOX: reflexão de ambiente — vetor I (câmera→fragmento) refletido na normal
     vec3 I        = normalize(fragPos - cameraPos);
@@ -353,19 +358,31 @@ int main(int argc, char* argv[])
 
     if (meshes.empty()) { cerr << "Nenhum objeto carregado!\n"; return -1; }
 
-    // ---- Luz ----
-    glm::vec3 lightPos, lightColor;
-    if (!scene.lights.empty()) {
-        lightPos   = scene.lights[0].position;
-        lightColor = scene.lights[0].color * scene.lights[0].intensity;
-    } else {
-        lightPos   = glm::vec3(-0.5f, 5.0f, 0.0f); // igual à professora
-        lightColor = glm::vec3(1.0f);
+    // ---- Luzes (lidas do scene.txt, ou padrão se não houver) ----
+    if (scene.lights.empty())
+    {
+        // Fallback: uma luz branca igual à professora
+        LightConfig lc;
+        lc.position  = glm::vec3(-0.5f, 5.0f, 0.0f);
+        lc.color     = glm::vec3(1.0f);
+        lc.intensity = 1.0f;
+        scene.lights.push_back(lc);
     }
-    glUniform3f(glGetUniformLocation(shaderID,"lightPos"),
-                lightPos.x, lightPos.y, lightPos.z);
-    glUniform3f(glGetUniformLocation(shaderID,"lightColor"),
-                lightColor.x, lightColor.y, lightColor.z);
+    {
+        int n = (int)scene.lights.size();
+        if (n > 4) n = 4; // respeita MAX_LIGHTS do shader
+        glUniform1i(glGetUniformLocation(shaderID, "numLights"), n);
+        for (int i = 0; i < n; i++)
+        {
+            string posName   = "lightPos["   + to_string(i) + "]";
+            string colorName = "lightColor[" + to_string(i) + "]";
+            glm::vec3 lc = scene.lights[i].color * scene.lights[i].intensity;
+            glUniform3fv(glGetUniformLocation(shaderID, posName.c_str()),
+                         1, glm::value_ptr(scene.lights[i].position));
+            glUniform3fv(glGetUniformLocation(shaderID, colorName.c_str()),
+                         1, glm::value_ptr(lc));
+        }
+    }
 
     cout << "\n=== " << meshes.size() << " objeto(s) na cena ===\n";
     cout << "TAB=selecionar | M=material | B=wireframe | O=projecao\n";
